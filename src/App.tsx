@@ -519,8 +519,9 @@ export default function App() {
       return;
     }
 
-    // Admin detection check
-    if (nameText === "@you_yuvraj_") {
+    // Admin detection check (any name starting with @ is treated as admin and requires password)
+    const isNameAdmin = nameText.startsWith("@");
+    if (isNameAdmin) {
       if (!isAdminMode) {
         setIsAdminMode(true);
         return;
@@ -1107,7 +1108,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-xs text-amber-800">
                     <span className="font-semibold block mb-0.5">🔐 Admin Credentials Required</span>
-                    Logged username detected: <span className="font-mono bg-amber-100 px-1 py-0.5 rounded">@you_yuvraj_</span>
+                    Logged username detected: <span className="font-mono bg-amber-100 px-1 py-0.5 rounded">{tempName.trim()}</span>
                   </div>
 
                   <div className="space-y-2">

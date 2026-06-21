@@ -503,7 +503,7 @@ async function startServer() {
       db.analytics.activeUsers = [];
     }
 
-    const idx = db.analytics.activeUsers.findIndex(u => u.name === name);
+    const idx = db.analytics.activeUsers.findIndex(u => u && u.name === name);
     if (idx !== -1) {
       db.analytics.activeUsers.splice(idx, 1);
     }

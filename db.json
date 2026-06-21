@@ -5,28 +5,56 @@
       "title": "Summer camp",
       "description": "Unlock high-quality classes covering AI Learning, English Speaking, Graphic Designing, and Entrepreneurship for Class 6th to 8th students.",
       "image": "/src/assets/images/summer_camp_thumb_1781793281839.jpg",
-      "price": "FREE"
+      "price": "FREE",
+      "subjects": [
+        "Science",
+        "Maths",
+        "Social Science",
+        "Hindi",
+        "English"
+      ]
     },
     {
       "id": "batch_aarambh_plus",
       "title": "AARAMBH PLUS 9th BATCH 26-27",
       "description": "Advanced learning foundation course for Class 9 students. Complete syllabus covering Science, Mathematics, English, and Social Studies with interactive live lectures.",
       "image": "/src/assets/images/aarambh_plus_thumb_1781793294866.jpg",
-      "price": "FREE"
+      "price": "FREE",
+      "subjects": [
+        "Science",
+        "Maths",
+        "Social Science",
+        "Hindi",
+        "English"
+      ]
     },
     {
       "id": "batch_aarambh_9th",
       "title": "AARAMBH 9th BATCH 26-27",
       "description": "Comprehensive class 9 curriculum mapped to standard academic schedules with standard study material, practice sheets, and mock tests.",
       "image": "/src/assets/images/aarambh_9th_thumb_1781793307881.jpg",
-      "price": "FREE"
+      "price": "FREE",
+      "subjects": [
+        "Science",
+        "Maths",
+        "Social Science",
+        "Hindi",
+        "English"
+      ]
     },
     {
       "id": "batch_nirmaan_8th",
       "title": "NIRMAAN BATCH Class 8th",
       "description": "Strong foundation builder for Class 8. Tailored lectures to build basic concepts of Physics, Chemistry, Biology, and advanced Mathematics for future olympiads.",
       "image": "/src/assets/images/nirmaan_8th_thumb_1781793323373.jpg",
-      "price": "FREE"
+      "price": "FREE",
+      "subjects": [
+        "Science",
+        "Maths",
+        "Social Science",
+        "Hindi",
+        "English"
+      ]
     },
     {
       "id": "batch_aarambh_10th",
@@ -34,7 +62,14 @@
       "description": "Ultimate comprehensive program for Class 10th board preparation. Full syllabus coverage of Science, Mathematics, English, and Social Sciences with live lectures and premium mock tests to secure perfect grades.",
       "image": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=600&auto=format&fit=crop",
       "price": "FREE",
-      "targetClass": "Class 10th"
+      "targetClass": "Class 10th",
+      "subjects": [
+        "Science",
+        "Maths",
+        "Social Science",
+        "Hindi",
+        "English"
+      ]
     }
   ],
   "lectures": [
@@ -43,69 +78,78 @@
       "batchId": "batch_aarambh_plus",
       "title": "Lecture 1: Science - Motion in a Straight Line & Velocity Vectors",
       "videoUrl": "https://www.w3schools.com/html/movie.mp4",
-      "order": 1
+      "order": 1,
+      "subject": "Science"
     },
     {
       "id": "lec_ap_2",
       "batchId": "batch_aarambh_plus",
       "title": "Lecture 2: Mathematics - Number Systems & Rationalization Tricks",
       "videoUrl": "https://media.w3.org/2010/05/sintel/trailer_hd.mp4",
-      "order": 2
+      "order": 2,
+      "subject": "Maths"
     },
     {
       "id": "lec_ap_3",
       "batchId": "batch_aarambh_plus",
       "title": "Lecture 3: English - Active and Passive Voices with Conversational English",
       "videoUrl": "https://www.w3schools.com/html/mov_bbb.mp4",
-      "order": 3
+      "order": 3,
+      "subject": "English"
     },
     {
       "id": "lec_a9_1",
       "batchId": "batch_aarambh_9th",
       "title": "Lecture 1: Gravitation & Laws of Universal Gravitational Forces",
       "videoUrl": "https://www.w3schools.com/html/movie.mp4",
-      "order": 1
+      "order": 1,
+      "subject": "Science"
     },
     {
       "id": "lec_a9_2",
       "batchId": "batch_aarambh_9th",
       "title": "Lecture 2: Quadratic Equations & Polynomial Identities",
       "videoUrl": "https://media.w3.org/2010/05/sintel/trailer_hd.mp4",
-      "order": 2
+      "order": 2,
+      "subject": "Science"
     },
     {
       "id": "lec_n8_1",
       "batchId": "batch_nirmaan_8th",
       "title": "Lecture 1: Force and Pressure Basics & Fluid Mechanics Diagrams",
       "videoUrl": "https://www.w3schools.com/html/mov_bbb.mp4",
-      "order": 1
+      "order": 1,
+      "subject": "Science"
     },
     {
       "id": "lec_n8_2",
       "batchId": "batch_nirmaan_8th",
       "title": "Lecture 2: Cell Structure & Biological Functions of Cell Organelles",
       "videoUrl": "https://www.w3schools.com/html/movie.mp4",
-      "order": 2
+      "order": 2,
+      "subject": "Science"
     },
     {
       "id": "lec_a10_1",
       "batchId": "batch_aarambh_10th",
       "title": "Lecture 1: Science - Chemical Reactions & Balancing Equations",
       "videoUrl": "https://media.w3.org/2010/05/sintel/trailer_hd.mp4",
-      "order": 1
+      "order": 1,
+      "subject": "Science"
     },
     {
       "id": "lec_a10_2",
       "batchId": "batch_aarambh_10th",
       "title": "Lecture 2: Mathematics - Real Numbers & Fundamental Theorem of Arithmetic",
       "videoUrl": "https://www.w3schools.com/html/movie.mp4",
-      "order": 2
+      "order": 2,
+      "subject": "Maths"
     }
   ],
   "analytics": {
-    "totalUsers": 11,
+    "totalUsers": 20,
     "batchClicks": {
-      "batch_summer_camp": 46,
+      "batch_summer_camp": 48,
       "batch_aarambh_plus": 29,
       "batch_aarambh_9th": 19,
       "batch_nirmaan_8th": 15,
@@ -113,12 +157,24 @@
     },
     "activeUsers": [
       {
-        "name": "@you_yuvraj_",
-        "timestamp": "2026-06-19T14:05:37.953Z"
+        "name": "@admin",
+        "timestamp": "2026-06-21T08:39:39.269Z"
+      },
+      {
+        "name": "Study Key",
+        "timestamp": "2026-06-21T08:39:39.258Z"
+      },
+      {
+        "name": "gg",
+        "timestamp": "2026-06-21T08:39:04.168Z"
       },
       {
         "name": "Raju",
-        "timestamp": "2026-06-19T14:04:19.500Z"
+        "timestamp": "2026-06-21T08:31:07.836Z"
+      },
+      {
+        "name": "@you_yuvraj_",
+        "timestamp": "2026-06-21T08:03:48.320Z"
       },
       {
         "name": "@you_yuvraj_",
@@ -171,5 +227,9 @@
         "timestamp": "2026-06-19T13:33:14.337Z"
       }
     ]
-  }
+  },
+  "admins": [
+    "@you_yuvraj_",
+    "@admin"
+  ]
 }
