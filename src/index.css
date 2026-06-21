@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+/* Modern, minimal custom scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #005CFF; /* royal-blue */
+}
+
+/* Firefox support */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* 🌙 SYSTEM-WIDE DARK THEME CONFIG */
+#app-root-container.dark {
+  background-color: #05070c !important;
+  color: #eaebf0 !important;
+}
+
+/* Header customization in Dark Mode */
+#app-root-container.dark header {
+  background-color: #05070cf2 !important;
+  border-color: #161e2e !important;
+}
+
+#app-root-container.dark header h1 {
+  color: #ffffff !important;
+}
+
+/* Card elements */
+#app-root-container.dark .bg-white {
+  background-color: #0c101a !important;
+  border-color: #1e293b !important;
+}
+
+/* Borders overrides */
+#app-root-container.dark .border-orange-100,
+#app-root-container.dark .border-orange-100\/40,
+#app-root-container.dark .border-orange-100\/50,
+#app-root-container.dark .border-blue-900\/40,
+#app-root-container.dark .border-blue-900\/30,
+#app-root-container.dark .border-gray-100,
+#app-root-container.dark .border-gray-100\/50,
+#app-root-container.dark .border-gray-150,
+#app-root-container.dark .border-gray-200,
+#app-root-container.dark .border-gray-200\/60,
+#app-root-container.dark .border-slate-200 {
+  border-color: #1e293b !important;
+}
+
+/* Typography styles */
+#app-root-container.dark h1,
+#app-root-container.dark h2,
+#app-root-container.dark h3,
+#app-root-container.dark h4,
+#app-root-container.dark .text-slate-900,
+#app-root-container.dark .text-gray-900,
+#app-root-container.dark .text-gray-950,
+#app-root-container.dark .text-slate-950 {
+  color: #f8fafc !important;
+}
+
+#app-root-container.dark p,
+#app-root-container.dark .text-slate-500,
+#app-root-container.dark .text-gray-500,
+#app-root-container.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+#app-root-container.dark .text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+/* Nav links and toggles */
+#app-root-container.dark .bg-orange-50 {
+  background-color: #005cff2a !important;
+  color: #60a5fa !important;
+}
+
+#app-root-container.dark .bg-gray-50 {
+  background-color: #0e131f !important;
+}
+
+#app-root-container.dark .bg-gray-100 {
+  background-color: #131a2c !important;
+}
+
+#app-root-container.dark .hover\:bg-gray-100:hover,
+#app-root-container.dark .hover\:bg-gray-200\/80:hover {
+  background-color: #1c273d !important;
+}
+
+/* Buttons and icons */
+#app-root-container.dark button.bg-gray-50,
+#app-root-container.dark button.bg-gray-100 {
+  background-color: #0e131f !important;
+  border-color: #1e293b !important;
+  color: #cbd5e1 !important;
+}
+
+#app-root-container.dark button.bg-gray-50:hover,
+#app-root-container.dark button.bg-gray-100:hover {
+  background-color: #1a253c !important;
+  color: #ffffff !important;
+}
+
+#app-root-container.dark .text-gray-800 {
+  color: #eaebf0 !important;
+}
+
+/* Input Fields and Search */
+#app-root-container.dark input {
+  background-color: #0e131f !important;
+  border-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+#app-root-container.dark input::placeholder {
+  color: #64748b !important;
+}
+
+#app-root-container.dark .absolute.right-3\.5 {
+  color: #94a3b8 !important;
+}
+
+/* Admin Dashboard Background */
+#app-root-container.dark #admin-summary-workspace,
+#app-root-container.dark .bg-\[\#FFF9F2\],
+#app-root-container.dark .bg-orange-50\/60 {
+  background-color: #07090e !important;
+  border-color: #1e293b !important;
+}
+
+/* Auth / Entry Flow Background */
+#app-root-container.dark #auth-flow-section {
+  background: radial-gradient(circle, #05070c 0%, #010204 100%) !important;
+}
+
+#app-root-container.dark #auth-flow-section .bg-white {
+  background-color: #11141b !important;
+}
+
+#app-root-container.dark .bg-red-50 {
+  background-color: #991b1b22 !important;
+  border-color: #991b1b55 !important;
+  color: #fca5a5 !important;
+}
+
+#app-root-container.dark .bg-amber-50 {
+  background-color: #78350f22 !important;
+  border-color: #78350f55 !important;
+  color: #fcd34d !important;
+}
+
+#app-root-container.dark .bg-amber-100 {
+  background-color: #78350f66 !important;
+  color: #fde68a !important;
+}
+
+/* Footer rules */
+#app-root-container.dark footer {
+  background-color: #05070c !important;
+  border-color: #161e2e !important;
+}
+
+#app-root-container.dark footer .text-gray-600 {
+  color: #f8fafc !important;
+}
+
+#app-root-container.dark footer .text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Lecture active list card styles */
+#app-root-container.dark .bg-orange-500\/5 {
+  background-color: #005cff10 !important;
+}
+
+#app-root-container.dark .border-orange-500\/25 {
+  border-color: #005cff33 !important;
+}
+
+/* custom spinner utility in dark */
+#app-root-container.dark .border-t-transparent {
+  border-top-color: transparent !important;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+

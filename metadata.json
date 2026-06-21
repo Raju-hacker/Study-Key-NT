@@ -1,0 +1,6 @@
+{
+  "name": "Study Key",
+  "description": "Full-stack ed-tech platform featuring easy guest access, structured learning batches, customized HTML5 security-oriented video streaming playback, and a robust admin panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
