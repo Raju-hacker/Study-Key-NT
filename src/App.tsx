@@ -1299,7 +1299,7 @@ export default function App() {
                   </div>
                   
                   {/* Selector to directly log in as Admin/Faculty */}
-                  <div className="flex items-center space-x-2 pt-2">
+                  <div className="hidden flex items-center space-x-2 pt-2">
                     <input
                       id="login-as-admin-checkbox"
                       type="checkbox"
