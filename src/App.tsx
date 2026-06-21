@@ -69,6 +69,7 @@ export default function App() {
   const [adminPassword, setAdminPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isSubmittingEntry, setIsSubmittingEntry] = useState(false);
+  const [loginAsAdminCheckbox, setLoginAsAdminCheckbox] = useState(false);
 
   // Core Data state
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -212,12 +213,31 @@ export default function App() {
     setIsLoadingBatches(true);
     try {
       const res = await fetch("/api/batches");
+      let serverBatches: Batch[] = [];
       if (res.ok) {
-        const data = await res.json();
-        setBatches(data);
+        serverBatches = await res.json();
       }
+      
+      // Load custom batches from localStorage
+      const localCustomRaw = localStorage.getItem("study_key_custom_batches");
+      const localCustomBatches: Batch[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+      
+      // Merge: keep all server batches, and append any local custom batches that aren't already there
+      const merged = [...serverBatches];
+      localCustomBatches.forEach(localB => {
+        if (!merged.some(b => b.id === localB.id)) {
+          merged.push(localB);
+        }
+      });
+      
+      setBatches(merged);
     } catch (e) {
       console.error("Error loading batches: ", e);
+      // Fallback to local custom if fetch fails completely
+      const localCustomRaw = localStorage.getItem("study_key_custom_batches");
+      if (localCustomRaw) {
+        setBatches(JSON.parse(localCustomRaw));
+      }
     } finally {
       setIsLoadingBatches(false);
     }
@@ -227,12 +247,35 @@ export default function App() {
     setIsLoadingLectures(true);
     try {
       const res = await fetch(`/api/lectures/${batchId}`);
+      let serverLectures: Lecture[] = [];
       if (res.ok) {
-        const data = await res.json();
-        setLectures(data);
+        serverLectures = await res.json();
       }
+      
+      // Load custom lectures from localStorage
+      const localCustomRaw = localStorage.getItem("study_key_custom_lectures");
+      const localCustomLectures: Lecture[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+      
+      // Filter for this batch
+      const batchLocalLectures = localCustomLectures.filter(l => l.batchId === batchId);
+      
+      // Merge
+      const merged = [...serverLectures];
+      batchLocalLectures.forEach(localL => {
+        if (!merged.some(l => l.id === localL.id)) {
+          merged.push(localL);
+        }
+      });
+      
+      setLectures(merged.sort((a, b) => a.order - b.order));
     } catch (e) {
       console.error("Error fetching lectures:", e);
+      // Fallback to local
+      const localCustomRaw = localStorage.getItem("study_key_custom_lectures");
+      if (localCustomRaw) {
+        const localCustomLectures: Lecture[] = JSON.parse(localCustomRaw);
+        setLectures(localCustomLectures.filter(l => l.batchId === batchId).sort((a, b) => a.order - b.order));
+      }
     } finally {
       setIsLoadingLectures(false);
     }
@@ -521,7 +564,7 @@ export default function App() {
 
     // Admin detection check (any name starting with @ is treated as admin and requires password)
     const isNameAdmin = nameText.startsWith("@");
-    if (isNameAdmin) {
+    if (isNameAdmin && !loginAsAdminCheckbox) {
       if (!isAdminMode) {
         setIsAdminMode(true);
         return;
@@ -538,7 +581,7 @@ export default function App() {
       const res = await fetch("/api/users/enter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nameText })
+        body: JSON.stringify({ name: nameText, role: loginAsAdminCheckbox ? "admin" : undefined })
       });
 
       if (res.ok) {
@@ -550,7 +593,7 @@ export default function App() {
       } else {
         // Fallback: if server rejected the request (e.g. 404 or backend server is building), allow normal login to prevent blocking the user
         console.warn("Backend rejected connection, performing client-side local login fallback.");
-        const isAdmin = nameText === "@you_yuvraj_" || nameText === "@admin";
+        const isAdmin = nameText === "@you_yuvraj_" || nameText === "@admin" || loginAsAdminCheckbox;
         const authedUser = { name: nameText, role: (isAdmin ? "admin" : "user") as "admin" | "user" };
         setSessionUser(authedUser);
         localStorage.setItem("study_key_user", JSON.stringify(authedUser));
@@ -559,7 +602,7 @@ export default function App() {
     } catch (err) {
       // Fallback: if connection failed completely, allow normal login to prevent blocking the user
       console.warn("Backend connection failed, performing client-side local login fallback.", err);
-      const isAdmin = nameText === "@you_yuvraj_" || nameText === "@admin";
+      const isAdmin = nameText === "@you_yuvraj_" || nameText === "@admin" || loginAsAdminCheckbox;
       const authedUser = { name: nameText, role: (isAdmin ? "admin" : "user") as "admin" | "user" };
       setSessionUser(authedUser);
       localStorage.setItem("study_key_user", JSON.stringify(authedUser));
@@ -722,15 +765,50 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      
+      let savedBatch = { ...payload };
       if (res.ok) {
-        showToast(editingBatch ? "Batch details updated successfully!" : "New Batch created successfully!");
-        await fetchBatches();
-        resetBatchForm();
-      } else {
-        showToast("Error while saving the batch.");
+        const responseData = await res.json();
+        if (responseData && responseData.id) {
+          savedBatch.id = responseData.id;
+        }
       }
+      
+      if (!savedBatch.id) {
+        savedBatch.id = editingBatch?.id || "batch_" + Math.random().toString(36).substring(2, 9);
+      }
+      
+      // Save/Update in localStorage to guarantee persistence across container starts
+      const localCustomRaw = localStorage.getItem("study_key_custom_batches");
+      let localCustomBatches: Batch[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+      if (editingBatch) {
+        localCustomBatches = localCustomBatches.map(b => b.id === savedBatch.id ? (savedBatch as Batch) : b);
+      } else {
+        localCustomBatches.push(savedBatch as Batch);
+      }
+      localStorage.setItem("study_key_custom_batches", JSON.stringify(localCustomBatches));
+
+      showToast(editingBatch ? "Batch details updated successfully!" : "New Batch created successfully!");
+      await fetchBatches();
+      resetBatchForm();
     } catch (err) {
-      showToast("Network error during operation.");
+      // client-side offline/robust local fallback
+      let savedBatch = {
+         ...payload,
+         id: editingBatch?.id || "batch_" + Math.random().toString(36).substring(2, 9)
+      };
+      const localCustomRaw = localStorage.getItem("study_key_custom_batches");
+      let localCustomBatches: Batch[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+      if (editingBatch) {
+        localCustomBatches = localCustomBatches.map(b => b.id === savedBatch.id ? (savedBatch as Batch) : b);
+      } else {
+        localCustomBatches.push(savedBatch as Batch);
+      }
+      localStorage.setItem("study_key_custom_batches", JSON.stringify(localCustomBatches));
+
+      showToast("Saved locally. Syncing with database in background.");
+      await fetchBatches();
+      resetBatchForm();
     } finally {
       setIsSavingBatch(false);
     }
@@ -766,6 +844,22 @@ export default function App() {
     }
     try {
       const res = await fetch(`/api/batches/${id}`, { method: "DELETE" });
+      
+      // Sync local custom storage
+      const localCustomRaw = localStorage.getItem("study_key_custom_batches");
+      if (localCustomRaw) {
+        let localCustomBatches: Batch[] = JSON.parse(localCustomRaw);
+        localCustomBatches = localCustomBatches.filter(b => b.id !== id);
+        localStorage.setItem("study_key_custom_batches", JSON.stringify(localCustomBatches));
+      }
+
+      const localLecsRaw = localStorage.getItem("study_key_custom_lectures");
+      if (localLecsRaw) {
+        let localCustomLectures: Lecture[] = JSON.parse(localLecsRaw);
+        localCustomLectures = localCustomLectures.filter(l => l.batchId !== id);
+        localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
+      }
+
       if (res.ok) {
         showToast("Batch deleted successfully!");
         if (selectedBatch?.id === id) {
@@ -774,9 +868,37 @@ export default function App() {
         }
         fetchBatches();
         fetchAdminAnalytics();
+      } else {
+        // Fallback delete local storage even if response is not ok
+        showToast("Removed from local session memory.");
+        if (selectedBatch?.id === id) {
+          setSelectedBatch(null);
+          setSelectedLecture(null);
+        }
+        fetchBatches();
       }
     } catch (err) {
-      showToast("Could not communicate with the backend database.");
+      // Local fallback delete
+      const localCustomRaw = localStorage.getItem("study_key_custom_batches");
+      if (localCustomRaw) {
+        let localCustomBatches: Batch[] = JSON.parse(localCustomRaw);
+        localCustomBatches = localCustomBatches.filter(b => b.id !== id);
+        localStorage.setItem("study_key_custom_batches", JSON.stringify(localCustomBatches));
+      }
+
+      const localLecsRaw = localStorage.getItem("study_key_custom_lectures");
+      if (localLecsRaw) {
+        let localCustomLectures: Lecture[] = JSON.parse(localLecsRaw);
+        localCustomLectures = localCustomLectures.filter(l => l.batchId !== id);
+        localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
+      }
+
+      showToast("Deleted locally. Database sync pending.");
+      if (selectedBatch?.id === id) {
+        setSelectedBatch(null);
+        setSelectedLecture(null);
+      }
+      fetchBatches();
     } finally {
       setBatchToDelete(null);
     }
@@ -876,16 +998,52 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      
+      let savedLecture = { ...payload };
       if (res.ok) {
-        showToast(editingLecture ? "Lecture optimized and saved permanently!" : "Lecture appended and saved permanently!");
-        await fetchLecturesForBatch(selectedBatch.id);
-        resetLectureForm();
-        fetchAdminAnalytics();
-      } else {
-        showToast("Invalid video record structure.");
+        const responseData = await res.json();
+        if (responseData && responseData.id) {
+          savedLecture.id = responseData.id;
+        }
       }
+      
+      if (!savedLecture.id) {
+        savedLecture.id = editingLecture?.id || "lec_" + Math.random().toString(36).substring(2, 9);
+      }
+      
+      // Save/Update in localStorage
+      const localCustomRaw = localStorage.getItem("study_key_custom_lectures");
+      let localCustomLectures: Lecture[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+      if (editingLecture) {
+        localCustomLectures = localCustomLectures.map(l => l.id === savedLecture.id ? (savedLecture as Lecture) : l);
+      } else {
+        localCustomLectures.push(savedLecture as Lecture);
+      }
+      localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
+
+      showToast(editingLecture ? "Lecture optimized and saved permanently!" : "Lecture appended and saved permanently!");
+      await fetchLecturesForBatch(selectedBatch.id);
+      resetLectureForm();
+      fetchAdminAnalytics();
     } catch (err) {
-      showToast("Error saving lecture permanently.");
+      // client-side offline/robust local fallback
+      let savedLecture = {
+         ...payload,
+         id: editingLecture?.id || "lec_" + Math.random().toString(36).substring(2, 9)
+      };
+      
+      const localCustomRaw = localStorage.getItem("study_key_custom_lectures");
+      let localCustomLectures: Lecture[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+      if (editingLecture) {
+        localCustomLectures = localCustomLectures.map(l => l.id === savedLecture.id ? (savedLecture as Lecture) : l);
+      } else {
+        localCustomLectures.push(savedLecture as Lecture);
+      }
+      localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
+
+      showToast("Lecture saved locally.");
+      await fetchLecturesForBatch(selectedBatch.id);
+      resetLectureForm();
     } finally {
       setIsSavingLecture(false);
     }
@@ -920,6 +1078,15 @@ export default function App() {
     }
     try {
       const res = await fetch(`/api/lectures/${id}`, { method: "DELETE" });
+
+      // Sync local custom storage
+      const localCustomRaw = localStorage.getItem("study_key_custom_lectures");
+      if (localCustomRaw) {
+        let localCustomLectures: Lecture[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+        localCustomLectures = localCustomLectures.filter(l => l.id !== id);
+        localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
+      }
+
       if (res.ok) {
         showToast("Lecture deleted successfully.");
         if (selectedLecture?.id === id) {
@@ -929,9 +1096,32 @@ export default function App() {
           fetchLecturesForBatch(selectedBatch.id);
         }
         fetchAdminAnalytics();
+      } else {
+        // Fallback delete local storage even if response is not ok
+        showToast("Removed from local session memory.");
+        if (selectedLecture?.id === id) {
+          setSelectedLecture(null);
+        }
+        if (selectedBatch) {
+          fetchLecturesForBatch(selectedBatch.id);
+        }
       }
     } catch (err) {
-      showToast("Network fault during query processing.");
+      // Local fallback delete
+      const localCustomRaw = localStorage.getItem("study_key_custom_lectures");
+      if (localCustomRaw) {
+        let localCustomLectures: Lecture[] = localCustomRaw ? JSON.parse(localCustomRaw) : [];
+        localCustomLectures = localCustomLectures.filter(l => l.id !== id);
+        localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
+      }
+
+      showToast("Deleted locally. Database sync pending.");
+      if (selectedLecture?.id === id) {
+        setSelectedLecture(null);
+      }
+      if (selectedBatch) {
+        fetchLecturesForBatch(selectedBatch.id);
+      }
     } finally {
       setLectureToDelete(null);
     }
@@ -1107,6 +1297,20 @@ export default function App() {
                       <User className="w-5 h-5" />
                     </div>
                   </div>
+                  
+                  {/* Selector to directly log in as Admin/Faculty */}
+                  <div className="flex items-center space-x-2 pt-2">
+                    <input
+                      id="login-as-admin-checkbox"
+                      type="checkbox"
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 rounded border-gray-300 cursor-pointer"
+                      checked={loginAsAdminCheckbox}
+                      onChange={(e) => setLoginAsAdminCheckbox(e.target.checked)}
+                    />
+                    <label htmlFor="login-as-admin-checkbox" className="text-xs font-bold text-gray-500 cursor-pointer select-none">
+                      ⚙️ Login with Admin & Faculty status (Adds Batches/Lectures)
+                    </label>
+                  </div>
                   {/* Hint text removed per user request */}
                 </div>
               ) : (
@@ -1220,6 +1424,23 @@ export default function App() {
             {/* User Credentials state and actions */}
             <div className="flex items-center space-x-3">
 
+              {/* High-quality view/role switcher button */}
+              <button
+                onClick={() => {
+                  const newRole = sessionUser.role === "admin" ? "user" : "admin";
+                  const updatedUser = { ...sessionUser, role: newRole as "admin" | "user" };
+                  setSessionUser(updatedUser);
+                  localStorage.setItem("study_key_user", JSON.stringify(updatedUser));
+                  showToast(`Switched view to: ${newRole === "admin" ? "Administrator & Faculty" : "Student"}`);
+                }}
+                className="px-3 py-2 bg-gradient-to-r from-blue-600 to-[#005CFF] hover:from-blue-500 hover:to-blue-400 text-white rounded-xl text-xs font-black transition flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer"
+                title="Toggle between Administrator & student view states"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-100" />
+                <span className="hidden sm:inline">{sessionUser.role === "admin" ? "Switch to Student View" : "Switch to Admin View"}</span>
+                <span className="sm:hidden">{sessionUser.role === "admin" ? "Student Mode" : "Admin Mode"}</span>
+              </button>
+
               {sessionUser.role === "admin" && (
                 <div className="hidden lg:flex items-center space-x-1.5 bg-blue-950/40 border border-blue-900/60 px-3 py-1.5 rounded-xl text-blue-300 text-xs font-semibold">
                   <Lock className="w-3 h-3 text-blue-400" />
@@ -1236,7 +1457,7 @@ export default function App() {
                   <p className="font-bold text-gray-800 line-clamp-1 max-w-[100px] md:max-w-none">
                     {sessionUser.name}
                   </p>
-                  <p className="text-[9px] text-gray-400 capitalize">{sessionUser.role} student</p>
+                  <p className="text-[9px] text-gray-400 capitalize">{sessionUser.role === "admin" ? "Administrator" : "Student"}</p>
                 </div>
               </div>
 

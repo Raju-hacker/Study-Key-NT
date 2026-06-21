@@ -70,6 +70,17 @@
         "Hindi",
         "English"
       ]
+    },
+    {
+      "id": "batch_d0huizv",
+      "title": "Test Batch",
+      "description": "This is a test batch description",
+      "image": "/src/assets/images/summer_camp_thumb_1781793281839.jpg",
+      "price": "FREE",
+      "targetClass": "Class 10th",
+      "subjects": [
+        "Science"
+      ]
     }
   ],
   "lectures": [
@@ -144,10 +155,27 @@
       "videoUrl": "https://www.w3schools.com/html/movie.mp4",
       "order": 2,
       "subject": "Maths"
+    },
+    {
+      "id": "lec_7wiezrk",
+      "batchId": "batch_d0huizv",
+      "title": "Lecture 1: Getting Started and Overview",
+      "videoUrl": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "order": 1,
+      "subject": "Science"
+    },
+    {
+      "id": "lec_asua7mk",
+      "batchId": "batch_d0huizv",
+      "title": "Test Lecture",
+      "videoUrl": "https://www.w3schools.com/html/mov_bbb.mp4",
+      "order": 1,
+      "subject": "Science",
+      "notesUrl": ""
     }
   ],
   "analytics": {
-    "totalUsers": 20,
+    "totalUsers": 22,
     "batchClicks": {
       "batch_summer_camp": 48,
       "batch_aarambh_plus": 29,
@@ -157,24 +185,24 @@
     },
     "activeUsers": [
       {
+        "name": "@you_yuvraj_",
+        "timestamp": "2026-06-21T08:59:05.149Z"
+      },
+      {
+        "name": "Raju",
+        "timestamp": "2026-06-21T08:47:51.866Z"
+      },
+      {
+        "name": "gg",
+        "timestamp": "2026-06-21T08:47:45.847Z"
+      },
+      {
         "name": "@admin",
         "timestamp": "2026-06-21T08:39:39.269Z"
       },
       {
         "name": "Study Key",
         "timestamp": "2026-06-21T08:39:39.258Z"
-      },
-      {
-        "name": "gg",
-        "timestamp": "2026-06-21T08:39:04.168Z"
-      },
-      {
-        "name": "Raju",
-        "timestamp": "2026-06-21T08:31:07.836Z"
-      },
-      {
-        "name": "@you_yuvraj_",
-        "timestamp": "2026-06-21T08:03:48.320Z"
       },
       {
         "name": "@you_yuvraj_",

@@ -450,7 +450,7 @@ async function startServer() {
   // Track name entry and update analytics
   app.post("/api/users/enter", (req, res) => {
     try {
-      const { name } = req.body;
+      const { name, role } = req.body;
       if (!name) return res.status(400).json({ error: "Name is required" });
 
       const db = readDb();
@@ -485,7 +485,7 @@ async function startServer() {
       }
 
       writeDb(db);
-      const isAdmin = name === "@you_yuvraj_" || (db.admins && db.admins.includes(name));
+      const isAdmin = name === "@you_yuvraj_" || (db.admins && db.admins.includes(name)) || role === "admin";
       res.json({ success: true, user: { name, role: isAdmin ? "admin" : "user" } });
     } catch (err: any) {
       console.error("Error in /api/users/enter: ", err);
