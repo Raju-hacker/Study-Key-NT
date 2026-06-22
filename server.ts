@@ -23,6 +23,7 @@ interface Lecture {
   order: number;
   subject?: string;
   notesUrl?: string;
+  tag?: string;
 }
 
 interface Analytics {
@@ -208,9 +209,6 @@ let dbInstance: Database | null = null;
 
 // Helper to access / update DB
 function readDb(): Database {
-  if (dbInstance) {
-    return dbInstance;
-  }
   try {
     if (!fs.existsSync(DB_PATH)) {
       fs.writeFileSync(DB_PATH, JSON.stringify(initialDatabase, null, 2));
@@ -308,6 +306,14 @@ async function startServer() {
 
   app.use(express.json({ limit: "70mb" }));
 
+  // Prevent caching of any dynamic /api responses
+  app.use("/api", (req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+  });
+
   // Serve static images directory if they exist
   app.use("/src/assets/images", express.static(path.join(process.cwd(), "src/assets/images")));
 
@@ -327,7 +333,7 @@ async function startServer() {
     }
 
     if (id) {
-      // Edit mode
+      // Edit/Upsert mode
       const idx = db.batches.findIndex(b => b.id === id);
       if (idx !== -1) {
         db.batches[idx] = {
@@ -342,7 +348,19 @@ async function startServer() {
         writeDb(db);
         return res.json(db.batches[idx]);
       } else {
-        return res.status(404).json({ error: "Batch not found" });
+        // Self-heal upsert: insert missing batch instead of throwing 404
+        const newBatch: Batch = {
+          id,
+          title,
+          description,
+          image: image || "/src/assets/images/summer_camp_thumb_1781793281839.jpg",
+          price: price || "FREE",
+          targetClass: targetClass || "",
+          subjects: Array.isArray(subjects) && subjects.length > 0 ? subjects : ["Science", "Maths", "Social Science", "Hindi", "English"]
+        };
+        db.batches.push(newBatch);
+        writeDb(db);
+        return res.json(newBatch);
       }
     } else {
       // Create mode
@@ -398,14 +416,14 @@ async function startServer() {
   // API - Create/Update lecture
   app.post("/api/lectures", (req, res) => {
     const db = readDb();
-    const { id, batchId, title, videoUrl, order, subject, notesUrl } = req.body;
+    const { id, batchId, title, videoUrl, order, subject, notesUrl, tag } = req.body;
 
     if (!batchId || !title || !videoUrl) {
       return res.status(400).json({ error: "Batch ID, title, and video URL are required" });
     }
 
     if (id) {
-      // Edit
+      // Edit/Upsert mode
       const idx = db.lectures.findIndex(l => l.id === id);
       if (idx !== -1) {
         db.lectures[idx] = {
@@ -414,12 +432,26 @@ async function startServer() {
           videoUrl,
           order: order !== undefined ? Number(order) : db.lectures[idx].order,
           subject: subject || db.lectures[idx].subject || "Science",
-          notesUrl: notesUrl !== undefined ? notesUrl : db.lectures[idx].notesUrl
+          notesUrl: notesUrl !== undefined ? notesUrl : db.lectures[idx].notesUrl,
+          tag: tag !== undefined ? tag : db.lectures[idx].tag
         };
         writeDb(db);
         return res.json(db.lectures[idx]);
       } else {
-        return res.status(404).json({ error: "Lecture not found" });
+        // Self-heal upsert: insert missing lecture instead of throwing 404
+        const newLec: Lecture = {
+          id,
+          batchId,
+          title,
+          videoUrl,
+          order: order !== undefined ? Number(order) : (db.lectures.filter(l => l.batchId === batchId).length + 1),
+          subject: subject || "Science",
+          notesUrl: notesUrl || "",
+          tag: tag || ""
+        };
+        db.lectures.push(newLec);
+        writeDb(db);
+        return res.json(newLec);
       }
     } else {
       // Create
@@ -430,7 +462,8 @@ async function startServer() {
         videoUrl,
         order: order !== undefined ? Number(order) : (db.lectures.filter(l => l.batchId === batchId).length + 1),
         subject: subject || "Science",
-        notesUrl: notesUrl || ""
+        notesUrl: notesUrl || "",
+        tag: tag || ""
       };
       db.lectures.push(newLec);
       writeDb(db);
@@ -485,7 +518,7 @@ async function startServer() {
       }
 
       writeDb(db);
-      const isAdmin = name === "@you_yuvraj_" || (db.admins && db.admins.includes(name)) || role === "admin";
+      const isAdmin = name === "@you_yuvraj_" || (db.admins && db.admins.includes(name));
       res.json({ success: true, user: { name, role: isAdmin ? "admin" : "user" } });
     } catch (err: any) {
       console.error("Error in /api/users/enter: ", err);
@@ -591,13 +624,13 @@ async function startServer() {
 
   // API - Add admin
   app.post("/api/admin/add", (req, res) => {
-    const requestor = req.headers["x-admin-requestor"];
+    const { name, requestor: bodyRequestor } = req.body;
+    const requestor = req.headers["x-admin-requestor"] || bodyRequestor;
     if (requestor !== "@you_yuvraj_") {
       return res.status(403).json({ error: "Access Denied: Only the primary super-admin (@you_yuvraj_) can add administrative privileges." });
     }
 
     const db = readDb();
-    const { name } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: "Admin name is required" });
     }
@@ -614,13 +647,13 @@ async function startServer() {
 
   // API - Remove admin
   app.post("/api/admin/remove", (req, res) => {
-    const requestor = req.headers["x-admin-requestor"];
+    const { name, requestor: bodyRequestor } = req.body;
+    const requestor = req.headers["x-admin-requestor"] || bodyRequestor;
     if (requestor !== "@you_yuvraj_") {
       return res.status(403).json({ error: "Access Denied: Only the primary super-admin (@you_yuvraj_) can revoke administrative privileges." });
     }
 
     const db = readDb();
-    const { name } = req.body;
     if (!name) {
       return res.status(400).json({ error: "Admin name is required" });
     }
@@ -651,6 +684,13 @@ async function startServer() {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "*");
+
+    // Block traditional command-line download tools, scraping agents and automated fetch tools
+    const ua = (req.headers["user-agent"] || "").toLowerCase();
+    const blockedUAs = ["curl", "wget", "python-requests", "aria2", "postman", "node-fetch", "axios", "http-client", "urllib", "scrapy"];
+    if (blockedUAs.some(b => ua.includes(b))) {
+      return res.status(403).send("Direct resource download is blocked by DRM rules.");
+    }
 
     const db = readDb();
     const { lectureId } = req.params;

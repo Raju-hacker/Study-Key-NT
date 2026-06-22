@@ -1,68 +1,79 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
     <radialGradient id="bg-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="0%" stop-color="#0b1a3d" />
+      <stop offset="60%" stop-color="#040b1e" />
       <stop offset="100%" stop-color="#020617" />
     </radialGradient>
-    <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fbbf24" />
-      <stop offset="50%" stop-color="#f59e0b" />
-      <stop offset="100%" stop-color="#d97706" />
+    <linearGradient id="metallic-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="35%" stop-color="#005CFF" />
+      <stop offset="70%" stop-color="#1d4ed8" />
+      <stop offset="100%" stop-color="#0f172a" />
     </linearGradient>
-    <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f97316" />
-      <stop offset="100%" stop-color="#ea580c" />
+    <linearGradient id="electric-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff" />
+      <stop offset="50%" stop-color="#005CFF" />
+      <stop offset="100%" stop-color="#002b80" />
     </linearGradient>
     <linearGradient id="silver-grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="100%" stop-color="#cbd5e1" />
+      <stop offset="30%" stop-color="#f1f5f9" />
+      <stop offset="70%" stop-color="#94a3b8" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+    <linearGradient id="navy-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#0b132b" />
     </linearGradient>
   </defs>
 
-  <!-- External golden circular container border -->
-  <circle cx="256" cy="256" r="236" fill="url(#bg-glow)" stroke="url(#gold-grad)" stroke-width="10" />
+  <!-- External circular container border in metallic blue -->
+  <circle cx="256" cy="256" r="236" fill="url(#bg-glow)" stroke="url(#electric-blue)" stroke-width="12" />
   
-  <!-- Outer glowing dashed design track from the logo -->
-  <circle cx="256" cy="256" r="218" fill="none" stroke="url(#orange-grad)" stroke-width="3" stroke-dasharray="10 6" opacity="0.45" />
+  <!-- Outer glowing dashed design track in electric cyan-blue -->
+  <circle cx="256" cy="256" r="218" fill="none" stroke="url(#electric-blue)" stroke-width="3" stroke-dasharray="10 6" opacity="0.5" />
 
   <!-- The stylized S (silver-white vector path) -->
   <path d="M 230 185 C 230 145, 150 145, 150 185 C 150 230, 230 230, 230 275 C 230 315, 150 315, 150 275" 
         fill="none" stroke="url(#silver-grad)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" />
 
-  <!-- The vertical divider and key spine of 'K' -->
+  <!-- The vertical divider and key spine of 'K' in electric/metallic blue -->
   <!-- Clover/Quatrefoil Head of Key -->
-  <circle cx="248" cy="120" r="18" fill="url(#gold-grad)" />
-  <circle cx="284" cy="120" r="18" fill="url(#gold-grad)" />
-  <circle cx="266" cy="100" r="18" fill="url(#gold-grad)" />
-  <!-- Clover inner gold cover with center punch hole -->
-  <circle cx="266" cy="120" r="14" fill="url(#gold-grad)" />
+  <circle cx="248" cy="120" r="18" fill="url(#metallic-blue)" />
+  <circle cx="284" cy="120" r="18" fill="url(#metallic-blue)" />
+  <circle cx="266" cy="100" r="18" fill="url(#metallic-blue)" />
+  <!-- Clover inner cover with center punch hole -->
+  <circle cx="266" cy="120" r="14" fill="url(#metallic-blue)" />
   <circle cx="266" cy="120" r="7" fill="#020617" />
-  <!-- Key shaft -->
-  <rect x="259" y="132" width="14" height="190" rx="3" fill="url(#gold-grad)" />
-  <!-- Key teeth on right side -->
-  <path d="M 273 250 H 296 V 265 H 273 Z" fill="url(#gold-grad)" />
-  <path d="M 273 280 H 296 V 295 H 273 Z" fill="url(#gold-grad)" />
   
-  <!-- The 'K' arms connected to the key divider -->
-  <path d="M 273 220 L 355 140" fill="none" stroke="url(#orange-grad)" stroke-width="40" stroke-linecap="round" />
-  <path d="M 283 235 L 365 315" fill="none" stroke="url(#orange-grad)" stroke-width="40" stroke-linecap="round" />
+  <!-- Key shaft -->
+  <rect x="259" y="132" width="14" height="190" rx="3" fill="url(#metallic-blue)" />
+  
+  <!-- Key teeth on right side -->
+  <path d="M 273 250 H 296 V 265 H 273 Z" fill="url(#metallic-blue)" />
+  <path d="M 273 280 H 296 V 295 H 273 Z" fill="url(#metallic-blue)" />
+  
+  <!-- The 'K' arms connected to the key divider (royal/metallic blue) -->
+  <path d="M 273 220 L 355 140" fill="none" stroke="url(#metallic-blue)" stroke-width="40" stroke-linecap="round" />
+  <path d="M 283 235 L 365 315" fill="none" stroke="url(#metallic-blue)" stroke-width="40" stroke-linecap="round" />
 
-  <!-- Graduation Cap elegantly resting on S -->
+  <!-- Graduation Cap elegantly resting on S (deep navy royal blue) -->
   <!-- Diamond core -->
-  <polygon points="190,105 120,135 190,165 260,135" fill="url(#orange-grad)" stroke="#ffffff" stroke-width="2.5" />
+  <polygon points="190,105 120,135 190,165 260,135" fill="url(#navy-grad)" stroke="url(#electric-blue)" stroke-width="2.5" />
   <!-- Under band of graduation cap -->
-  <path d="M 152 148 V 163 C 152 173, 228 173, 228 163 V 148" fill="#ea580c" stroke="url(#gold-grad)" stroke-width="2" />
-  <!-- Golden Tassel on left -->
-  <path d="M 190 135 L 132 153 V 183" fill="none" stroke="url(#gold-grad)" stroke-width="4.5" stroke-linecap="round" />
-  <circle cx="132" cy="185" r="7" fill="url(#gold-grad)" />
+  <path d="M 152 148 V 163 C 152 173, 228 173, 228 163 V 148" fill="#1e3a8a" stroke="url(#electric-blue)" stroke-width="2" />
+  <!-- Electric Blue Tassel on left -->
+  <path d="M 190 135 L 132 153 V 183" fill="none" stroke="url(#electric-blue)" stroke-width="4.5" stroke-linecap="round" />
+  <circle cx="132" cy="185" r="7" fill="url(#electric-blue)" />
 
-  <!-- Open Book at the base of the design -->
+  <!-- Open Book at the base of the design (matching pages in clean high-contrast blue trims) -->
   <!-- Spine glow -->
-  <path d="M 100 375 C 180 345, 250 375, 266 390 C 282 375, 352 345, 432 375" fill="none" stroke="url(#gold-grad)" stroke-width="12" stroke-linecap="round" />
+  <path d="M 100 375 C 180 345, 250 375, 266 390 C 282 375, 352 345, 432 375" fill="none" stroke="url(#electric-blue)" stroke-width="12" stroke-linecap="round" />
   <!-- Left curved page -->
-  <path d="M 110 365 C 180 335, 250 360, 262 377 L 262 347 C 250 330, 180 305, 110 335 Z" fill="#ffffff" />
+  <path d="M 110 365 C 180 335, 250 360, 262 377 L 262 347 C 250 330, 180 305, 110 335 Z" fill="#ffffff" stroke="url(#metallic-blue)" stroke-width="1" />
   <!-- Right curved page -->
-  <path d="M 422 365 C 352 335, 282 360, 270 377 L 270 347 C 282 330, 352 305, 422 335 Z" fill="#f1f5f9" />
+  <path d="M 422 365 C 352 335, 282 360, 270 377 L 270 347 C 282 330, 352 305, 422 335 Z" fill="#f8fafc" stroke="url(#metallic-blue)" stroke-width="1" />
   <!-- Center bookmark/spine cap -->
-  <path d="M 262 377 L 266 387 L 270 377 L 270 340 L 266 330 L 262 340 Z" fill="url(#gold-grad)" />
+  <path d="M 262 377 L 266 387 L 270 377 L 270 340 L 266 330 L 262 340 Z" fill="url(#electric-blue)" />
 </svg>

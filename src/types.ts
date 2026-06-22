@@ -16,6 +16,7 @@ export interface Lecture {
   order: number;
   subject?: string;
   notesUrl?: string;
+  tag?: string;
 }
 
 export interface User {

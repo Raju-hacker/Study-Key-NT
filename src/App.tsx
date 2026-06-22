@@ -32,11 +32,119 @@ import {
   Download,
   FileText,
   ShieldCheck,
-  UserPlus
+  UserPlus,
+  Volume2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Batch, Lecture, Analytics, ActiveUserLog, WatchHistoryLog } from "./types";
 import { StudyKeyLogo } from "./components/StudyKeyLogo";
+
+// DRM Stream & Extension Interceptor Protection Layer
+(() => {
+  if (typeof window === "undefined") return;
+  try {
+    const originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
+    const originalCurrentSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "currentSrc");
+    const originalGetAttribute = Element.prototype.getAttribute;
+
+    const isSuspiciousCaller = (): boolean => {
+      try {
+        const stack = new Error().stack || "";
+        if (
+          stack.includes("chrome-extension://") ||
+          stack.includes("moz-extension://") ||
+          stack.includes("safari-extension://") ||
+          stack.includes("extension-") ||
+          stack.includes("content_script") ||
+          stack.includes("downloader") ||
+          stack.includes("vdo") ||
+          stack.includes("hls-fetch")
+        ) {
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    };
+
+    // Mask HTMLMediaElement.prototype.src
+    Object.defineProperty(HTMLMediaElement.prototype, "src", {
+      get() {
+        if (isSuspiciousCaller()) {
+          console.warn("[DRM Alert] Blocked unauthenticated attempt to extract media source.");
+          return "https://secure-drm.studykey.academy/stream/blocked-unauthorized-download-attempt";
+        }
+        return originalSrcDescriptor?.get ? originalSrcDescriptor.get.call(this) : "";
+      },
+      set(val) {
+        if (originalSrcDescriptor?.set) {
+          originalSrcDescriptor.set.call(this, val);
+        }
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    // Mask HTMLMediaElement.prototype.currentSrc
+    Object.defineProperty(HTMLMediaElement.prototype, "currentSrc", {
+      get() {
+        if (isSuspiciousCaller()) {
+          console.warn("[DRM Alert] Blocked unauthenticated attempt to extract current media source.");
+          return "https://secure-drm.studykey.academy/stream/blocked-unauthorized-download-attempt";
+        }
+        return originalCurrentSrcDescriptor?.get ? originalCurrentSrcDescriptor.get.call(this) : "";
+      },
+      configurable: true,
+      enumerable: true
+    });
+
+    // Mask getAttribute('src') for HTMLVideoElement and HTMLAudioElement
+    Element.prototype.getAttribute = function (name: string) {
+      if (this instanceof HTMLVideoElement || this instanceof HTMLAudioElement) {
+        if (name && name.toLowerCase() === "src") {
+          if (isSuspiciousCaller()) {
+            return "https://secure-drm.studykey.academy/stream/blocked-unauthorized-download-attempt";
+          }
+        }
+      }
+      return originalGetAttribute.apply(this, arguments as any);
+    };
+  } catch (err) {
+    console.warn("Secure stream protections loaded with warning: ", err);
+  }
+})();
+
+let memoryStorage: Record<string, string> = {};
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (e) {
+      return memoryStorage[key] || null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (e) {
+      memoryStorage[key] = value;
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch (e) {
+      delete memoryStorage[key];
+    }
+  },
+  clear: (): void => {
+    try {
+      window.localStorage.clear();
+    } catch (e) {
+      memoryStorage = {};
+    }
+  }
+};
+const localStorage = safeLocalStorage;
 
 export default function App() {
   // Session / Authentication state
@@ -44,6 +152,232 @@ export default function App() {
     const saved = localStorage.getItem("study_key_user");
     return saved ? JSON.parse(saved) : null;
   });
+
+  // Developer tools detection state (blocks non-admins if open)
+  const [devToolsOpen, setDevToolsOpen] = useState(false);
+
+  // Keyboard shortcut blocking (F12, Inspect Element) and context menu blocking
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      const isNormal = !sessionUser || (sessionUser.role !== "admin" && sessionUser.name !== "@you_yuvraj_");
+      if (isNormal) {
+        e.preventDefault();
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isNormal = !sessionUser || (sessionUser.role !== "admin" && sessionUser.name !== "@you_yuvraj_");
+      if (!isNormal) return;
+
+      // F12 key
+      if (e.key === "F12" || e.keyCode === 123) {
+        e.preventDefault();
+        setDevToolsOpen(true);
+        return;
+      }
+
+      // Ctrl+Shift+I, J, C, U or Cmd+Opt+I, J, C, U
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      const isShift = e.shiftKey;
+      const isAlt = e.altKey;
+
+      if (isCmdOrCtrl && isShift && ["i", "I", "j", "J", "c", "C"].includes(e.key)) {
+        e.preventDefault();
+        setDevToolsOpen(true);
+        return;
+      }
+
+      if (isCmdOrCtrl && isAlt && ["i", "I", "j", "J"].includes(e.key)) {
+        e.preventDefault();
+        setDevToolsOpen(true);
+        return;
+      }
+
+      // View Source (Ctrl+U)
+      if (isCmdOrCtrl && (e.key === "u" || e.key === "U")) {
+        e.preventDefault();
+        setDevToolsOpen(true);
+        return;
+      }
+
+      // Save Page (Ctrl+S or Cmd+S) (Blocks downloading page contents/source files)
+      if (isCmdOrCtrl && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        showToast("Saving page assets or media content is actively restricted on this platform.");
+        return;
+      }
+
+      // Print Page (Ctrl+P or Cmd+P) (Blocks printing page elements or grabbing layout)
+      if (isCmdOrCtrl && (e.key === "p" || e.key === "P")) {
+        e.preventDefault();
+        showToast("Printing course material or media content is restricted.");
+        return;
+      }
+    };
+
+    window.addEventListener("contextmenu", handleContextMenu, { capture: true });
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+
+    return () => {
+      window.removeEventListener("contextmenu", handleContextMenu, { capture: true });
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+    };
+  }, [sessionUser]);
+
+  // Periodic active DevTools analyzer
+  useEffect(() => {
+    const isNormal = !sessionUser || (sessionUser.role !== "admin" && sessionUser.name !== "@you_yuvraj_");
+    if (!isNormal) {
+      setDevToolsOpen(false);
+      return;
+    }
+
+    const checkDevTools = () => {
+      const isStillNormal = !sessionUser || (sessionUser.role !== "admin" && sessionUser.name !== "@you_yuvraj_");
+      if (!isStillNormal) return;
+
+      // 1. Dynamic debugger performance / timing delta check
+      const startTime = performance.now();
+      try {
+        const testDebugger = new Function("debugger;");
+        testDebugger();
+      } catch (e) {
+        // Safe-guard catch
+      }
+      const endTime = performance.now();
+      if (endTime - startTime > 50) {
+        setDevToolsOpen(true);
+        return;
+      }
+
+      // 2. Browser window outer dimensions vs inner dimensions (only outside of an iframe context)
+      const isIFrame = window.self !== window.top;
+      if (!isIFrame) {
+        const threshold = 160;
+        const widthDev = window.outerWidth - window.innerWidth > threshold;
+        const heightDev = window.outerHeight - window.innerHeight > threshold;
+        if (widthDev || heightDev) {
+          setDevToolsOpen(true);
+          return;
+        }
+      }
+    };
+
+    const interval = setInterval(checkDevTools, 1000);
+    return () => clearInterval(interval);
+  }, [sessionUser]);
+
+  // Audio Speech Clarity & Compression Enhancer System
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const hpFilterRef = useRef<BiquadFilterNode | null>(null);
+  const eqFilterRef = useRef<BiquadFilterNode | null>(null);
+  const dynamicsCompressorRef = useRef<DynamicsCompressorNode | null>(null);
+  const [audioEnhancement, setAudioEnhancement] = useState<"standard" | "clear_voice" | "vocal_boost">("clear_voice");
+
+  const initAudioEnhancer = () => {
+    const video = videoPlayerRef.current;
+    if (!video) return;
+    
+    // Check if we already connected to avoid "HTMLMediaElement already connected to a source" error
+    if ((video as any).__audio_connected__) {
+      // Just ensure the context is active
+      if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+        audioContextRef.current.resume().catch(() => {});
+      }
+      applyAudioFilters();
+      return;
+    }
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      
+      const ctx = new AudioContextClass();
+      audioContextRef.current = ctx;
+      
+      const source = ctx.createMediaElementSource(video);
+      sourceNodeRef.current = source;
+      
+      // Highpass filter to cut out background rumble / low humming / muddy bass (<120Hz)
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.setValueAtTime(130, ctx.currentTime);
+      hpFilterRef.current = hp;
+      
+      // Peaking filter to boost core voice presence & articulation frequencies (around 2.5kHz - 3.2kHz)
+      const eq = ctx.createBiquadFilter();
+      eq.type = "peaking";
+      eq.frequency.setValueAtTime(2600, ctx.currentTime);
+      eq.Q.setValueAtTime(1.2, ctx.currentTime);
+      eq.gain.setValueAtTime(7, ctx.currentTime); // boost speech elements by 7dB default
+      eqFilterRef.current = eq;
+
+      // Dynamics compressor to normalize vocal dynamics (brings quiet voices up, loud peaks down)
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.setValueAtTime(-24, ctx.currentTime);
+      comp.knee.setValueAtTime(30, ctx.currentTime);
+      comp.ratio.setValueAtTime(4, ctx.currentTime);
+      comp.attack.setValueAtTime(0.01, ctx.currentTime);
+      comp.release.setValueAtTime(0.25, ctx.currentTime);
+      dynamicsCompressorRef.current = comp;
+      
+      // Chain together: source -> highpass -> clarity peaking eq -> dynamic compressor -> output
+      source.connect(hp);
+      hp.connect(eq);
+      eq.connect(comp);
+      comp.connect(ctx.destination);
+
+      // Set connected flag
+      (video as any).__audio_connected__ = true;
+
+      // Ensure context running status
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      applyAudioFilters();
+    } catch (err) {
+      console.warn("Secure Web Audio DSP connection: ", err);
+    }
+  };
+
+  const applyAudioFilters = () => {
+    const ctx = audioContextRef.current;
+    const hp = hpFilterRef.current;
+    const eq = eqFilterRef.current;
+    const comp = dynamicsCompressorRef.current;
+    
+    if (!ctx || !hp || !eq || !comp) return;
+    
+    const now = ctx.currentTime;
+    
+    if (audioEnhancement === "standard") {
+      // Standard: Neutral/Flat EQ (Bypass effect)
+      hp.frequency.setValueAtTime(15, now); // low cut off audibility
+      eq.gain.setValueAtTime(0, now); // flat
+      comp.threshold.setValueAtTime(0, now); // bypass compression
+    } else if (audioEnhancement === "clear_voice") {
+      // Clear Voice AI/Equalizer: cuts muddy background rumble, boosts frequency articulation
+      hp.frequency.setValueAtTime(130, now); 
+      eq.frequency.setValueAtTime(2500, now);
+      eq.gain.setValueAtTime(8, now); // +8dB clear boost
+      comp.threshold.setValueAtTime(-22, now);
+      comp.ratio.setValueAtTime(3, now);
+    } else if (audioEnhancement === "vocal_boost") {
+      // Vocal Booster Pro: cuts more low rumble, heavy articulation boost for fast speakers or whispering teachers
+      hp.frequency.setValueAtTime(180, now); 
+      eq.frequency.setValueAtTime(3100, now);
+      eq.gain.setValueAtTime(13, now); // high presence boost (+13dB)
+      comp.threshold.setValueAtTime(-28, now);
+      comp.ratio.setValueAtTime(5, now);
+    }
+  };
+
+  // Synchronize audio EQ settings immediately upon selector click
+  useEffect(() => {
+    applyAudioFilters();
+  }, [audioEnhancement]);
 
   // Theme configuration (Interactive Theme Mode Toggle)
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -143,6 +477,7 @@ export default function App() {
   const [lectureFormNotes, setLectureFormNotes] = useState("");
   const [lectureFormOrder, setLectureFormOrder] = useState(1);
   const [lectureFormSubject, setLectureFormSubject] = useState("Science");
+  const [lectureFormTag, setLectureFormTag] = useState<"Live" | "Recorded" | "">("");
   const [isSavingLecture, setIsSavingLecture] = useState(false);
 
   // Admin List Management states
@@ -212,7 +547,7 @@ export default function App() {
   const fetchBatches = async () => {
     setIsLoadingBatches(true);
     try {
-      const res = await fetch("/api/batches");
+      const res = await fetch(`/api/batches?t=${Date.now()}`);
       let serverBatches: Batch[] = [];
       if (res.ok) {
         serverBatches = await res.json();
@@ -246,7 +581,7 @@ export default function App() {
   const fetchLecturesForBatch = async (batchId: string) => {
     setIsLoadingLectures(true);
     try {
-      const res = await fetch(`/api/lectures/${batchId}`);
+      const res = await fetch(`/api/lectures/${batchId}?t=${Date.now()}`);
       let serverLectures: Lecture[] = [];
       if (res.ok) {
         serverLectures = await res.json();
@@ -284,7 +619,7 @@ export default function App() {
   const fetchAdminAnalytics = async () => {
     if (!sessionUser || sessionUser.role !== "admin") return;
     try {
-      const res = await fetch("/api/admin/analytics");
+      const res = await fetch(`/api/admin/analytics?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
@@ -294,24 +629,25 @@ export default function App() {
     }
   };
 
-  // Initial loads
+  // Initial loads and background polling scheduler.
+  // Periodically fetches updated batches and analytics (every 10 seconds)
+  // to avoid cross-browser or cross-session stale state.
   useEffect(() => {
     fetchBatches();
     if (sessionUser && sessionUser.role === "admin") {
       fetchAdminAnalytics();
       fetchAdmins();
     }
-  }, [sessionUser]);
 
-  // Automatically refresh admin analytics every 15 seconds while Admin is active
-  useEffect(() => {
-    if (sessionUser?.role === "admin") {
-      const timer = setInterval(() => {
+    const interval = setInterval(() => {
+      fetchBatches();
+      if (sessionUser && sessionUser.role === "admin") {
         fetchAdminAnalytics();
-      }, 15000);
-      return () => clearInterval(timer);
-    }
-  }, [sessionUser]);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [sessionUser, selectedBatch]);
 
   // Send active heartbeat ping to keep session online
   useEffect(() => {
@@ -622,12 +958,48 @@ export default function App() {
     setUserSelectedSubject("All");
     fetchLecturesForBatch(batch.id);
 
-    // Track analytics event
+    // Optimistically update clicks locally so they are visible immediately
+    setAnalytics(prev => {
+      if (!prev) {
+        return {
+          totalUsers: 1,
+          batchClicks: { [batch.id]: 1 },
+          activeUsers: [],
+          watchHistory: [],
+          totalLecturesCount: 0
+        };
+      }
+      return {
+        ...prev,
+        batchClicks: {
+          ...prev.batchClicks,
+          [batch.id]: (prev.batchClicks?.[batch.id] || 0) + 1
+        }
+      };
+    });
+
+    // Save click locally for fallback persistence
+    try {
+      const localClicksRaw = localStorage.getItem("study_key_local_clicks");
+      const localClicks = localClicksRaw ? JSON.parse(localClicksRaw) : {};
+      localClicks[batch.id] = (localClicks[batch.id] || 0) + 1;
+      localStorage.setItem("study_key_local_clicks", JSON.stringify(localClicks));
+    } catch (e) {
+      console.error("Local storage click save error", e);
+    }
+
+    // Track analytics event on server
     fetch("/api/batches/click", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ batchId: batch.id })
-    }).catch(e => console.log("Click tracking error", e));
+    })
+    .then(res => {
+      if (res.ok) {
+        fetchAdminAnalytics();
+      }
+    })
+    .catch(e => console.log("Click tracking error", e));
   };
 
   const logout = () => {
@@ -644,7 +1016,7 @@ export default function App() {
   // Admin list management calls
   const fetchAdmins = async () => {
     try {
-      const res = await fetch("/api/admin/list");
+      const res = await fetch(`/api/admin/list?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         if (data.admins) {
@@ -679,7 +1051,7 @@ export default function App() {
           "Content-Type": "application/json",
           "x-admin-requestor": sessionUser.name
         },
-        body: JSON.stringify({ name: targetName })
+        body: JSON.stringify({ name: targetName, requestor: sessionUser.name })
       });
       if (res.ok) {
         const data = await res.json();
@@ -719,7 +1091,7 @@ export default function App() {
           "Content-Type": "application/json",
           "x-admin-requestor": sessionUser.name
         },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, requestor: sessionUser.name })
       });
       if (res.ok) {
         const data = await res.json();
@@ -989,7 +1361,8 @@ export default function App() {
       videoUrl: lectureFormVideo.trim(),
       notesUrl: lectureFormNotes.trim(),
       order: Number(lectureFormOrder) || 1,
-      subject: lectureFormSubject
+      subject: lectureFormSubject,
+      tag: lectureFormTag
     };
 
     try {
@@ -1021,6 +1394,10 @@ export default function App() {
       }
       localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
 
+      if (selectedLecture && selectedLecture.id === savedLecture.id) {
+        setSelectedLecture(savedLecture as Lecture);
+      }
+
       showToast(editingLecture ? "Lecture optimized and saved permanently!" : "Lecture appended and saved permanently!");
       await fetchLecturesForBatch(selectedBatch.id);
       resetLectureForm();
@@ -1041,6 +1418,10 @@ export default function App() {
       }
       localStorage.setItem("study_key_custom_lectures", JSON.stringify(localCustomLectures));
 
+      if (selectedLecture && selectedLecture.id === savedLecture.id) {
+        setSelectedLecture(savedLecture as Lecture);
+      }
+
       showToast("Lecture saved locally.");
       await fetchLecturesForBatch(selectedBatch.id);
       resetLectureForm();
@@ -1060,6 +1441,7 @@ export default function App() {
     setLectureFormNotes(lecture.notesUrl || "");
     setLectureFormOrder(lecture.order);
     setLectureFormSubject(lecture.subject || (selectedBatch?.subjects?.[0] || "Science"));
+    setLectureFormTag((lecture.tag as any) || "");
     setShowLectureForm(true);
   };
 
@@ -1134,6 +1516,7 @@ export default function App() {
     setLectureFormNotes("");
     setLectureFormOrder(lectures.length + 1);
     setLectureFormSubject(selectedBatch?.subjects?.[0] || "Science");
+    setLectureFormTag("");
     setShowLectureForm(false);
   };
 
@@ -1146,6 +1529,23 @@ export default function App() {
     }
     return matchesSearch;
   });
+
+  // Blocking screen if developer tools are opened by normal users
+  const isNormalUser = !sessionUser || (sessionUser.role !== "admin" && sessionUser.name !== "@you_yuvraj_");
+  if (devToolsOpen && isNormalUser) {
+    return (
+      <div className="fixed inset-0 bg-[#050505] z-[999999] flex flex-col items-center justify-center select-none text-center p-6 font-sans">
+        <div className="space-y-3 max-w-2xl mx-auto flex flex-col items-center justify-center">
+          <h1 className="text-red-500 font-extrabold tracking-widest text-lg md:text-xl uppercase flex items-center justify-center gap-3">
+            <span className="text-amber-500">⚠️</span> SECURITY ALERT
+          </h1>
+          <p className="text-[#8e98a8] font-black tracking-widest text-[9.5px] md:text-xs text-center max-w-lg">
+            DEVELOPER TOOLS DETECTED. ACCESS BLOCKED.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="app-root-container" className="min-h-screen bg-[#FFFDF9] text-gray-800 font-sans flex flex-col antialiased">
@@ -1425,21 +1825,23 @@ export default function App() {
             <div className="flex items-center space-x-3">
 
               {/* High-quality view/role switcher button */}
-              <button
-                onClick={() => {
-                  const newRole = sessionUser.role === "admin" ? "user" : "admin";
-                  const updatedUser = { ...sessionUser, role: newRole as "admin" | "user" };
-                  setSessionUser(updatedUser);
-                  localStorage.setItem("study_key_user", JSON.stringify(updatedUser));
-                  showToast(`Switched view to: ${newRole === "admin" ? "Administrator & Faculty" : "Student"}`);
-                }}
-                className="px-3 py-2 bg-gradient-to-r from-blue-600 to-[#005CFF] hover:from-blue-500 hover:to-blue-400 text-white rounded-xl text-xs font-black transition flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer"
-                title="Toggle between Administrator & student view states"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-100" />
-                <span className="hidden sm:inline">{sessionUser.role === "admin" ? "Switch to Student View" : "Switch to Admin View"}</span>
-                <span className="sm:hidden">{sessionUser.role === "admin" ? "Student Mode" : "Admin Mode"}</span>
-              </button>
+              {sessionUser && (sessionUser.name.startsWith("@") || adminsList.includes(sessionUser.name)) && (
+                <button
+                  onClick={() => {
+                    const newRole = sessionUser.role === "admin" ? "user" : "admin";
+                    const updatedUser = { ...sessionUser, role: newRole as "admin" | "user" };
+                    setSessionUser(updatedUser);
+                    localStorage.setItem("study_key_user", JSON.stringify(updatedUser));
+                    showToast(`Switched view to: ${newRole === "admin" ? "Administrator & Faculty" : "Student"}`);
+                  }}
+                  className="px-3 py-2 bg-gradient-to-r from-blue-600 to-[#005CFF] hover:from-blue-500 hover:to-blue-400 text-white rounded-xl text-xs font-black transition flex items-center space-x-1.5 shadow-sm active:scale-95 cursor-pointer"
+                  title="Toggle between Administrator & student view states"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-100" />
+                  <span className="hidden sm:inline">{sessionUser.role === "admin" ? "Switch to Student View" : "Switch to Admin View"}</span>
+                  <span className="sm:hidden">{sessionUser.role === "admin" ? "Student Mode" : "Admin Mode"}</span>
+                </button>
+              )}
 
               {sessionUser.role === "admin" && (
                 <div className="hidden lg:flex items-center space-x-1.5 bg-blue-950/40 border border-blue-900/60 px-3 py-1.5 rounded-xl text-blue-300 text-xs font-semibold">
@@ -1564,7 +1966,7 @@ export default function App() {
                               seen.add(trimmed);
                               const lastSeen = new Date(u.timestamp).getTime();
                               const now = new Date().getTime();
-                              return now - lastSeen < 60000;
+                              return Math.abs(now - lastSeen) < 300000;
                             }).length;
                           })()}
                         </span>
@@ -1619,12 +2021,22 @@ export default function App() {
                           No batches created. Use the form above to add your first study batch!
                         </div>
                       ) : (() => {
+                        const localClicks = (() => {
+                          try {
+                            return JSON.parse(localStorage.getItem("study_key_local_clicks") || "{}");
+                          } catch (e) {
+                            return {};
+                          }
+                        })();
+                        const getClicksForBatch = (id: string) => {
+                          return Math.max(analytics?.batchClicks?.[id] || 0, localClicks[id] || 0);
+                        };
                         const totalClicks = batches.reduce(
-                          (sum, b) => sum + (analytics?.batchClicks?.[b.id] || 0),
+                          (sum, b) => sum + getClicksForBatch(b.id),
                           0
                         );
                         return batches.map((b) => {
-                          const count = analytics?.batchClicks?.[b.id] || 0;
+                          const count = getClicksForBatch(b.id);
                           const percent = totalClicks > 0 ? Math.round((count / totalClicks) * 100) : 0;
                           return (
                             <div key={b.id} className="p-4 bg-[#0c101a] rounded-xl border border-blue-900/40 hover:bg-[#101524] hover:border-blue-700/50 hover:shadow-sm transition-all duration-200 flex flex-col justify-between space-y-3">
@@ -1695,7 +2107,7 @@ export default function App() {
                             if (!user.timestamp) return false;
                             const lastSeen = new Date(user.timestamp).getTime();
                             const now = new Date().getTime();
-                            return now - lastSeen < 60000; // Under 1 minute is Active
+                            return Math.abs(now - lastSeen) < 300000; // Under 5 minutes is Active
                           })();
 
                           const lastSeenTex = (() => {
@@ -2187,14 +2599,11 @@ export default function App() {
               
               {/* Home Decorative Title Badge & Intro */}
               <div className="text-center max-w-3xl mx-auto space-y-4 pt-4">
-                <span className="inline-block bg-[#005CFF]/15 text-blue-400 border border-[#005CFF]/30 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
-                  🔐 STUDY KEY LMS
-                </span>
                 <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
-                  Explore <span className="text-[#005CFF]">Batches</span>
+                  <span className="text-slate-950">𝓔𝔁𝓹𝓵𝓸𝓻𝓮</span> <span className="text-[#005CFF]">𝓑𝓪𝓽𝓬𝓱𝓮𝓼</span>
                 </h2>
                 <p className="text-slate-500 text-sm md:text-md font-medium leading-relaxed">
-                  Unlock premium educational content, high-quality streams, and structured study material designed for class 6th to 10th. All available directly.
+                  𝒰𝓃𝓁𝑜𝒸𝓀 𝓅𝓇𝑒𝓂𝒾𝓊𝓂 𝑒𝒹𝓊𝒸𝒶𝓉𝒾𝑜𝓃𝒶𝓁 𝒸𝑜𝓃𝓉𝑒𝓃𝓉, 𝒽𝒾𝑔𝒽-𝓆𝓊𝒶𝓁𝒾𝓉𝓎 𝓈𝓉𝓇𝑒𝒶𝓂𝓈, 𝒶𝓃𝒹 𝓈𝓉𝓇𝓊𝒸𝓉𝓊𝓇𝑒𝒹 𝓈𝓉𝓊𝒹𝓎 𝓂𝒶𝓉𝑒𝓇𝒾𝒶𝓁 𝒹𝑒𝓈𝒾𝑔𝓃𝑒𝒹 𝒻𝑜𝓇 𝒸𝓁𝒶𝓈𝓈 6𝓉𝒽 𝓉𝑜 10𝓉𝒽. 𝒜𝓁𝓁 𝒶𝓋𝒶𝒾𝓁𝒶𝒷𝓁𝑒 𝒹𝒾𝓇𝑒𝒸𝓉𝓁𝓎.
                 </p>
 
                 {/* Elegant Dynamic Search Bar */}
@@ -2487,7 +2896,7 @@ export default function App() {
                         </select>
                       </div>
 
-                      <div className="space-y-1.5 md:col-span-2">
+                      <div className="space-y-1.5 md:col-span-1">
                         <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Notes PDF Link (Optional)</label>
                         <input
                           type="text"
@@ -2499,7 +2908,21 @@ export default function App() {
                         />
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 md:col-span-1">
+                        <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Lecture Tag (Live/Recorded)</label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white outline-none disabled:opacity-75 disabled:cursor-not-allowed text-gray-800 font-bold"
+                          value={lectureFormTag}
+                          onChange={(e) => setLectureFormTag(e.target.value as any)}
+                          disabled={isSavingLecture}
+                        >
+                          <option value="">No Tag (Default STUDY KEY)</option>
+                          <option value="Live">🔴 Live Tag (Blinking)</option>
+                          <option value="Recorded">📹 Recorded Tag (Normal)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-1">
                         <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sorting Order Index</label>
                         <input
                           type="number"
@@ -2565,16 +2988,39 @@ export default function App() {
                         <video
                           ref={videoPlayerRef}
                           key={selectedLecture.id}
-                          className="w-full h-full"
+                          className="w-full h-full select-none"
                           controls
                           autoPlay
-                          onLoadedMetadata={handleVideoLoaded}
+                          onLoadedMetadata={() => {
+                            handleVideoLoaded();
+                            initAudioEnhancer();
+                          }}
+                          onPlay={initAudioEnhancer}
                           onEnded={handleVideoEnded}
                           onError={handleVideoError}
-                          controlsList="nodownload" // Protect video from standard inspection right-click downloads
+                          controlsList="nodownload noremoteplayback" // Disable download options and casting routes
+                          disablePictureInPicture // Disable PIP as downloading extensions exploit HTML5 PIP layers to extract blobs
                           onContextMenu={(e) => e.preventDefault()}
                         />
                       )}
+
+                      {/* ALWAYS VISIBLE LECTURE TAG (Top Right) */}
+                      <div className="absolute top-4 right-4 z-20 pointer-events-none select-none">
+                        {selectedLecture.tag === "Live" ? (
+                          <span className="bg-red-600 border border-red-500/30 px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider uppercase shadow-lg shadow-red-500/35 animate-pulse flex items-center gap-1.5 font-mono text-white">
+                            <span className="w-1.5 h-1.5 bg-white rounded-full shrink-0"></span>
+                            <span>LIVE</span>
+                          </span>
+                        ) : selectedLecture.tag === "Recorded" ? (
+                          <span className="bg-emerald-600 border border-emerald-500/20 px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider uppercase font-mono text-white shadow-md">
+                            RECORDED
+                          </span>
+                        ) : (
+                          <span className="bg-[#005CFF]/90 border border-blue-400/20 px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider uppercase font-mono text-white shadow-md">
+                            STUDY KEY
+                          </span>
+                        )}
+                      </div>
 
                       {/* Header overlay displaying currently covered session title */}
                       <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-between items-center text-white text-xs pointer-events-none">
@@ -2582,9 +3028,6 @@ export default function App() {
                           <p className="font-extrabold">{selectedLecture.title}</p>
                           <p className="text-[10px] text-gray-300">Resumes automatically. DRM Streaming Proxy Active</p>
                         </div>
-                        <span className="bg-[#005CFF]/80 px-2 py-0.5 rounded text-[9px] font-black tracking-wider uppercase">
-                          STUDY LIVE
-                        </span>
                       </div>
                     </div>
                   ) : (
@@ -2599,14 +3042,12 @@ export default function App() {
                     </div>
                   )}
 
+
+
                    {/* Active lecture summary details & help card */}
                   {selectedLecture && (
                     <div className="bg-white p-5 rounded-2xl border border-blue-900/40 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                       <div className="space-y-1">
-                        <div className="flex items-center space-x-2 text-[#005CFF] text-[10px] font-black uppercase tracking-widest">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>LECTURE WATCH HISTORY TRACKER</span>
-                        </div>
                         <h4 className="text-lg font-extrabold text-gray-900 mt-1">{selectedLecture.title}</h4>
                         <div className="flex items-center space-x-2 mt-1.5 flex-wrap gap-1">
                           <span className="text-xs text-gray-500">
@@ -2887,7 +3328,7 @@ export default function App() {
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex flex-col items-center md:items-start gap-1">
                 <p className="font-semibold text-gray-600">© 2026 Study Key</p>
-                <p id="footer-developer-credit" className="text-[11px] text-gray-400">Designed and Developed By Avinash and Yuvraj</p>
+                <p id="footer-developer-credit" className="text-[11px] text-gray-400">𝓓𝓮𝓼𝓲𝓰𝓷𝓮𝓭 𝓪𝓷𝓭 𝓓𝓮𝓿𝓮𝓵𝓸𝓹𝓮𝓭 𝓑𝔂 𝓨𝓾𝓿𝓻𝓪𝓳</p>
               </div>
               <div className="flex space-x-4">
                 <span className="text-red-500 text-sm animate-pulse">❤️</span>
